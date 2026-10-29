@@ -401,9 +401,16 @@
             <input type="email" id="adminEmail" placeholder="admin@barriosangenaro.com" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Nueva Clave PIN de Acceso</label>
-            <input type="password" id="adminNewPin" placeholder="Ingrese nuevo PIN numérico" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+            <h3 class="text-xs font-bold text-slate-700 uppercase">Cambiar Clave PIN</h3>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">PIN Actual</label>
+              <input type="password" id="adminCurrentPinInput" placeholder="PIN actual" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nuevo PIN</label>
+              <input type="password" id="adminNewPinInput" placeholder="Nuevo PIN numérico" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
           </div>
 
           <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 rounded-lg text-sm transition">
@@ -514,7 +521,7 @@
       <form onsubmit="validarAdmin(event)" class="space-y-3">
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Clave PIN</label>
-          <input type="password" id="inputAdminPin" placeholder="****" required class="w-full text-center text-lg tracking-widest border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 outline-none">
+          <input type="password" id="modalInputAdminPin" placeholder="****" required class="w-full text-center text-lg tracking-widest border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
 
         <div class="flex gap-2">
@@ -585,8 +592,7 @@
       }
 
       // Cargar valores en formulario de configuración
-      document.getElementById('adminEmail').value = configAdmin.email;
-      document.getElementById('adminNewPin').value = configAdmin.pin;
+      document.getElementById('adminEmail').value = configAdmin.email || "admin@barriosangenaro.com";
 
       updateAdminUI();
       renderAll();
@@ -607,6 +613,7 @@
         alert('Ha salido del modo administrador.');
       } else {
         document.getElementById('modalAdmin').classList.remove('hidden');
+        document.getElementById('modalInputAdminPin').focus();
       }
     }
 
@@ -616,12 +623,12 @@
 
     function validarAdmin(e) {
       e.preventDefault();
-      const inputPin = document.getElementById('inputAdminPin').value;
+      const inputPin = document.getElementById('modalInputAdminPin').value;
       if (inputPin === configAdmin.pin) {
         isAdmin = true;
         updateAdminUI();
         closeModalAdmin();
-        document.getElementById('inputAdminPin').value = '';
+        document.getElementById('modalInputAdminPin').value = '';
       } else {
         alert('Clave PIN incorrecta. Si no la recuerda, presione "¿Restablecer PIN a 1234?"');
       }
@@ -631,7 +638,6 @@
       if (confirm('¿Desea restablecer el PIN de administrador al valor original (1234)?')) {
         configAdmin.pin = "1234";
         saveData();
-        document.getElementById('adminNewPin').value = "1234";
         alert('Su PIN ha sido restablecido a: 1234');
       }
     }
@@ -682,55 +688,3 @@
       renderPagosTable();
       renderConceptos();
       renderDeudores();
-      renderVecinos();
-      populateConceptosSelects();
-    }
-
-    // KPI METRICAS
-    function renderKPIs() {
-      const mes = parseInt(document.getElementById('selectMes').value);
-      const anio = parseInt(document.getElementById('selectAnio').value);
-
-      const pagosMes = pagos.filter(p => p.mes === mes && p.anio === anio);
-      const recaudado = pagosMes.reduce((acc, p) => acc + (parseFloat(p.montoPagado) || 0), 0);
-      const totalExigible = pagosMes.reduce((acc, p) => acc + (parseFloat(p.montoBase) || 0), 0);
-      const deuda = Math.max(0, totalExigible - recaudado);
-      const porcentaje = totalExigible > 0 ? Math.round((recaudado / totalExigible) * 100) : 0;
-
-      document.getElementById('kpiRecaudado').innerText = '$' + recaudado.toLocaleString('es-AR');
-      document.getElementById('kpiDeuda').innerText = '$' + deuda.toLocaleString('es-AR');
-      document.getElementById('kpiCumplimiento').innerText = porcentaje + '%';
-      document.getElementById('kpiVecinosCount').innerText = vecinos.length;
-    }
-
-    // TABLA DE COBROS & PAGOS
-    function renderPagosTable() {
-      const mes = parseInt(document.getElementById('selectMes').value);
-      const anio = parseInt(document.getElementById('selectAnio').value);
-      const query = document.getElementById('searchPagos').value.toLowerCase();
-      const tbody = document.getElementById('tbodyPagos');
-      tbody.innerHTML = '';
-
-      if (vecinos.length === 0 || conceptos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-400">Sin registros. Agregue vecinos y tipos de expensas para comenzar.</td></tr>';
-        return;
-      }
-
-      vecinos.forEach(v => {
-        if (v.nombre.toLowerCase().includes(query) || v.lote.toLowerCase().includes(query)) {
-          conceptos.forEach(c => {
-            let pago = pagos.find(p => p.vecinoId === v.id && p.conceptoId === c.id && p.mes === mes && p.anio === anio);
-            
-            const montoBase = pago ? pago.montoBase : c.monto;
-            const montoPagado = pago ? pago.montoPagado : 0;
-            const estado = pago ? pago.estado : 'Pendiente';
-
-            let badgeClass = 'bg-rose-100 text-rose-700';
-            if (estado === 'Pagado') badgeClass = 'bg-emerald-100 text-emerald-700';
-            if (estado === 'Parcial') badgeClass = 'bg-amber-100 text-amber-700';
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-3 font-semibold text-slate-700">${v.lote}</td>
-              <td class="p-3">${v.nombre}</td>
-              <td class="p-3 text-xs font
