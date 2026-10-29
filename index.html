@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barrio San Genaro - Gestión de Expensas</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js para Reportes Visuales -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background-color: white; color: black; font-size: 12pt; }
+      .card-shadow { box-shadow: none !important; border: 1px solid #ddd; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
+
+  <!-- Header principal -->
+  <header class="bg-indigo-900 text-white shadow-lg no-print">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 p-2.5 rounded-lg text-white font-bold text-xl">
+          <i class="fa-solid fa-building-user"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">Barrio San Genaro</h1>
+          <p class="text-xs text-indigo-200">Sistema de Gestión e Informes de Expensas</p>
+        </div>
+      </div>
+
+      <!-- Control de Modo / Acceso -->
+      <div class="flex items-center gap-2">
+        <span id="modeBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500 text-white flex items-center gap-1">
+          <i class="fa-solid fa-eye"></i> Modo Vecino (Solo Lectura)
+        </span>
+        
+        <button id="btnSharePublic" onclick="copyPublicLink()" class="bg-indigo-700 hover:bg-indigo-600 text-white text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5" title="Copiar enlace para vecinos">
+          <i class="fa-solid fa-share-nodes"></i> <span class="hidden sm:inline">Enlace Público</span>
+        </button>
+
+        <button id="btnAdminToggle" onclick="openAdminModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-lock"></i> <span id="btnAdminText">Acceso Admin</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Banner de modo público -->
+  <div id="publicBanner" class="bg-blue-50 border-b border-blue-200 text-blue-800 px-4 py-2 text-xs text-center no-print">
+    <i class="fa-solid fa-circle-info mr-1"></i> Está navegando en <strong>Modo Vecino</strong>. Puede consultar estados de deuda, importes por concepto y comprobantes sin clave.
+  </div>
+
+  <!-- Contenedor Principal -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
+
+    <!-- KPI / Métricas Rápidas -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 no-print">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Recaudado (Mes)</p>
+          <h3 id="kpiRecaudado" class="text-2xl font-bold text-emerald-600">$0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+          <i class="fa-solid fa-sack-dollar text-lg"></i>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Pendiente / Deuda</p>
+          <h3 id="kpiDeuda" class="text-2xl font-bold text-rose-600">$0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+          <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Cumplimiento</p>
+          <h3 id="kpiCumplimiento" class="text-2xl font-bold text-indigo-600">0%</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+          <i class="fa-solid fa-chart-pie text-lg"></i>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Vecinos Registrados</p>
+          <h3 id="kpiVecinosCount" class="text-2xl font-bold text-slate-700">0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+          <i class="fa-solid fa-users text-lg"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navegación por pestañas -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 no-print">
+      <div class="border-b border-slate-200 px-4 flex space-x-2 overflow-x-auto">
+        <button onclick="switchTab('registroPagos')" id="tab-registroPagos" class="tab-btn px-4 py-3 text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 flex items-center gap-2 whitespace-nowrap">
+          <i class="fa-solid fa-cash-register"></i> Cobros & Pagos
+        </button>
+        <button onclick="switchTab('conceptos')" id="tab-conceptos" class="tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+          <i class="fa-solid fa-tags"></i> Tipos de Expensa & Importes
+        </button>
+        <button onclick="switchTab('deudores')" id="tab-deudores" class="tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+          <i class="fa-solid fa-triangle-exclamation"></i> Vecinos Deudores
+        </button>
+        <button onclick="switchTab('vecinos')" id="tab-vecinos" class="tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+          <i class="fa-solid fa-house-user"></i> Padrón de Vecinos
+        </button>
+        <button onclick="switchTab('reportes')" id="tab-reportes" class="tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+          <i class="fa-solid fa-chart-column"></i> Balance & Gráficos
+        </button>
+      </div>
+
+      <!-- Filtro de Período Global -->
+      <div class="p-4 bg-slate-50 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-semibold text-slate-600">Período de Consulta:</label>
+          <select id="selectMes" onchange="renderAll()" class="text-sm bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
+          <select id="selectAnio" onchange="renderAll()" class="text-sm bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="window.print()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-print"></i> Imprimir Informe
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 1: COBROS & REGISTRO DE PAGOS -->
+    <div id="content-registroPagos" class="tab-content space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800">Estado de Cobro de Expensas</h2>
+            <p class="text-xs text-slate-500">Listado general de vecinos y registro de pagos para el período seleccionado.</p>
+          </div>
+          <input type="text" id="searchPagos" oninput="renderPagosTable()" placeholder="Buscar por vecino o lote..." class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-100 text-slate-600 uppercase text-xs">
+              <tr>
+                <th class="p-3">Lote / Dpto</th>
+                <th class="p-3">Vecino</th>
+                <th class="p-3">Tipo Expensa</th>
+                <th class="p-3">Monto Base</th>
+                <th class="p-3">Monto Pagado</th>
+                <th class="p-3">Estado</th>
+                <th class="p-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPagos" class="divide-y divide-slate-100">
+              <!-- Render Dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 2: TIPOS DE EXPENSA E IMPORTES MASIVOS -->
+    <div id="content-conceptos" class="tab-content space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Formulario Crear/Editar Concepto (Solo Admin) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 admin-only">
+          <h2 class="text-lg font-bold text-slate-800 mb-2">Nuevo Tipo de Expensa</h2>
+          <p class="text-xs text-slate-500 mb-4">Cree categorías como Ordinaria, Agua, Mejoras, Seguridad, etc.</p>
+          
+          <form id="formConcepto" onsubmit="guardarConcepto(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del Concepto</label>
+              <input type="text" id="conceptoNombre" placeholder="Ej: Servicio de Agua / Cloacas" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Monto Sugerido / Base ($)</label>
+              <input type="number" step="0.01" id="conceptoMonto" placeholder="Ej: 15000" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción / Notas</label>
+              <textarea id="conceptoDesc" rows="2" placeholder="Opcional: detalles del cobro" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+            </div>
+
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg text-sm transition">
+              <i class="fa-solid fa-plus-circle mr-1"></i> Guardar Concepto
+            </button>
+          </form>
+        </div>
+
+        <!-- Ajuste / Incremento Masivo de Importes (Solo Admin) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 admin-only">
+          <h2 class="text-lg font-bold text-slate-800 mb-2">Actualización Masiva de Importes</h2>
+          <p class="text-xs text-slate-500 mb-4">Aumente porcentualmente o reajuste valores fijados para el mes actual.</p>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Concepto a Ajustar</label>
+              <select id="selectAjusteConcepto" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                <!-- Carga dinámica -->
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Aplicar Aumento Porcentual (%)</label>
+              <div class="flex gap-2">
+                <input type="number" id="inputPorcentajeAumento" placeholder="Ej: 15" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                <button onclick="aplicarAumentoMasivo()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition whitespace-nowrap">
+                  Aplicar %
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">Aumenta el valor del concepto seleccionado para todas las cuotas base del período.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Conceptos Vigentes -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 lg:col-span-3">
+          <h2 class="text-lg font-bold text-slate-800 mb-3">Tipos de Expensas Habilitados</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-100 text-slate-600 uppercase text-xs">
+                <tr>
+                  <th class="p-3">Nombre del Concepto</th>
+                  <th class="p-3">Monto Base Sugerido</th>
+                  <th class="p-3">Descripción</th>
+                  <th class="p-3 text-center admin-only">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyConceptos" class="divide-y divide-slate-100">
+                <!-- Render Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PESTAÑA 3: DEUDORES -->
+    <div id="content-deudores" class="tab-content space-y-6 hidden">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800">Informe de Vecinos Deudores</h2>
+            <p class="text-xs text-slate-500">Listado consolidado con deudas pendientes acumuladas.</p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-slate-500">Total Deuda Acumulada:</span>
+            <div id="deudaTotalSum" class="text-xl font-bold text-rose-600">$0</div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-rose-50 text-rose-800 uppercase text-xs">
+              <tr>
+                <th class="p-3">Lote / Dpto</th>
+                <th class="p-3">Vecino</th>
+                <th class="p-3">Contacto</th>
+                <th class="p-3">Conceptos Pendientes</th>
+                <th class="p-3 text-right">Monto Deuda</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDeudores" class="divide-y divide-slate-100">
+              <!-- Render Dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 4: PADRÓN DE VECINOS -->
+    <div id="content-vecinos" class="tab-content space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Formulario Vecino (Solo Admin) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 admin-only">
+          <h2 class="text-lg font-bold text-slate-800 mb-2" id="formVecinoTitle">Registrar Nuevo Vecino</h2>
+          
+          <form id="formVecino" onsubmit="guardarVecino(event)" class="space-y-4">
+            <input type="hidden" id="vecinoId">
+            
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nº Lote / Depto *</label>
+              <input type="text" id="vecinoLote" placeholder="Ej: Lote 12 / Dpto 3B" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre y Apellido *</label>
+              <input type="text" id="vecinoNombre" placeholder="Ej: Juan Pérez" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono / WhatsApp</label>
+              <input type="text" id="vecinoTelefono" placeholder="Ej: +54 9 11 1234 5678" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Correo Electrónico</label>
+              <input type="email" id="vecinoEmail" placeholder="Ej: vecino@email.com" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div class="flex gap-2">
+              <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg text-sm transition">
+                <i class="fa-solid fa-save mr-1"></i> Guardar Vecino
+              </button>
+              <button type="button" onclick="resetFormVecino()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-semibold px-3 py-2 rounded-lg text-sm transition">
+                Limpiar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tabla Padrón de Vecinos -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 lg:col-span-2">
+          <h2 class="text-lg font-bold text-slate-800 mb-4">Padrón de Propietarios / Inquilinos</h2>
+          
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-100 text-slate-600 uppercase text-xs">
+                <tr>
+                  <th class="p-3">Lote / Dpto</th>
+                  <th class="p-3">Nombre</th>
+                  <th class="p-3">Teléfono</th>
+                  <th class="p-3 text-center admin-only">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyVecinos" class="divide-y divide-slate-100">
+                <!-- Render Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PESTAÑA 5: REPORTES & GRÁFICOS -->
+    <div id="content-reportes" class="tab-content space-y-6 hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-sm font-bold text-slate-700 mb-4">Recaudado vs Deuda del Período</h3>
+          <div class="h-64 flex justify-center items-center">
+            <canvas id="chartPie"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-sm font-bold text-slate-700 mb-4">Histórico Recaudado Anual (2026)</h3>
+          <div class="h-64">
+            <canvas id="chartBar"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: REGISTRAR / EDITAR PAGO -->
+  <div id="modalPago" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-800">Registrar / Editar Pago</h3>
+        <button onclick="closeModalPago()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="formPago" onsubmit="guardarPago(event)" class="space-y-3">
+        <input type="hidden" id="pagoVecinoId">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Vecino / Lote</label>
+          <input type="text" id="pagoVecinoNombre" readonly class="w-full text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 font-medium">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Expensa</label>
+          <select id="pagoConceptoId" onchange="actualizarMontoSugeridoPago()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <!-- Carga dinámica -->
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Monto Exigible ($)</label>
+            <input type="number" step="0.01" id="pagoMontoBase" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Monto Pagado ($)</label>
+            <input type="number" step="0.01" id="pagoMontoPagado" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Estado</label>
+            <select id="pagoEstado" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="Pagado">Pagado</option>
+              <option value="Parcial">Parcial</option>
+              <option value="Pendiente">Pendiente</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Medio de Pago</label>
+            <select id="pagoMedio" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="Transferencia">Transferencia</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="MercadoPago">MercadoPago</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Pago</label>
+          <input type="date" id="pagoFecha" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Observaciones</label>
+          <input type="text" id="pagoNotas" placeholder="Ej: Comprobante Nº 12345" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg text-sm transition">
+            Guardar Cambios
+          </button>
+          <button type="button" onclick="closeModalPago()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm transition">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: LOGIN ADMINISTRADOR -->
+  <div id="modalAdmin" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+      <div class="text-center">
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800">Acceso Administrador</h3>
+        <p class="text-xs text-slate-500">Ingrese su clave para modificar montos y registros.</p>
+      </div>
+
+      <form onsubmit="validarAdmin(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Clave PIN (Por defecto: 1234)</label>
+          <input type="password" id="inputAdminPin" placeholder="****" required class="w-full text-center text-lg tracking-widest border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold py-2 rounded-lg text-sm transition">
+            Ingresar
+          </button>
+          <button type="button" onclick="closeModalAdmin()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm transition">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: RECIBO SIMPLE / COMPROBANTE -->
+  <div id="modalRecibo" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="border-b border-slate-200 pb-3 text-center">
+        <h2 class="text-xl font-bold text-indigo-900">Barrio San Genaro</h2>
+        <p class="text-xs text-slate-500">Comprobante Oficial de Pago de Expensas</p>
+      </div>
+
+      <div id="reciboBody" class="space-y-2 text-sm">
+        <!-- Render dinámico -->
+      </div>
+
+      <div class="flex gap-2 pt-4 no-print">
+        <button onclick="window.print()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg text-sm transition">
+          <i class="fa-solid fa-print mr-1"></i> Imprimir Recibo
+        </button>
+        <button onclick="closeModalRecibo()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LÓGICA JAVASCRIPT LOCAL Y PERSISTENCIA -->
+  <script>
+    // ESTADO DE LA APLICACIÓN
+    let isAdmin = false;
+    const PIN_CORRECTO = "1234";
+
+    // DATOS DE PRUEBA / INICIALES
+    let vecinos = JSON.parse(localStorage.getItem('san_genaro_vecinos')) || [
+      { id: '1', lote: 'Lote 01', nombre: 'Carlos Rodríguez', telefono: '11 4455-6677', email: 'carlos@email.com' },
+      { id: '2', lote: 'Lote 02', nombre: 'María Fernández', telefono: '11 2233-4455', email: 'maria@email.com' },
+      { id: '3', lote: 'Lote 03', nombre: 'Roberto Gómez', telefono: '11 9988-7766', email: 'roberto@email.com' },
+      { id: '4', lote: 'Lote 04', nombre: 'Ana Martínez', telefono: '11 5566-7788', email: 'ana@email.com' }
+    ];
+
+    let conceptos = JSON.parse(localStorage.getItem('san_genaro_conceptos')) || [
+      { id: 'c1', nombre: 'Expensa Ordinaria', monto: 25000, desc: 'Mantenimiento general e iluminación' },
+      { id: 'c2', nombre: 'Servicio de Agua / Cloacas', monto: 8500, desc: 'Consumo mensual proyectado' },
+      { id: 'c3', nombre: 'Fondo de Mejoras', monto: 5000, desc: 'Reparación de portón principal' }
+    ];
+
+    let pagos = JSON.parse(localStorage.getItem('san_genaro_pagos')) || [
+      { id: 'p1', vecinoId: '1', conceptoId: 'c1', mes: 10, anio: 2026, montoBase: 25000, montoPagado: 25000, estado: 'Pagado', fecha: '2026-10-05', medio: 'Transferencia', notas: 'Pago a tiempo' },
+      { id: 'p2', vecinoId: '2', conceptoId: 'c1', mes: 10, anio: 2026, montoBase: 25000, montoPagado: 10000, estado: 'Parcial', fecha: '2026-10-10', medio: 'MercadoPago', notas: 'Saldo pendiente' },
+      { id: 'p3', vecinoId: '3', conceptoId: 'c1', mes: 10, anio: 2026, montoBase: 25000, montoPagado: 0, estado: 'Pendiente', fecha: '', medio: 'Efectivo', notas: '' }
+    ];
+
+    // INICIALIZACIÓN
+    document.addEventListener('DOMContentLoaded', () => {
+      // Configurar fecha actual en selectores
+      const hoy = new Date();
+      document.getElementById('selectMes').value = hoy.getMonth() + 1;
+      
+      // Verificar si ingresa en modo público explícito por URL (?mode=public)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('mode') === 'admin') {
+        isAdmin = true;
+      }
+
+      updateAdminUI();
+      renderAll();
+    });
+
+    function saveData() {
+      localStorage.setItem('san_genaro_vecinos', JSON.stringify(vecinos));
+      localStorage.setItem('san_genaro_conceptos', JSON.stringify(conceptos));
+      localStorage.setItem('san_genaro_pagos', JSON.stringify(pagos));
+    }
+
+    // CONTROL DE MODO ADMIN / VECINO
+    function openAdminModal() {
+      if (isAdmin) {
+        isAdmin = false;
+        updateAdminUI();
+        alert('Ha salido del modo administrador.');
+      } else {
+        document.getElementById('modalAdmin').classList.remove('hidden');
+      }
+    }
+
+    function closeModalAdmin() {
+      document.getElementById('modalAdmin').classList.add('hidden');
+    }
+
+    function validarAdmin(e) {
+      e.preventDefault();
+      const inputPin = document.getElementById('inputAdminPin').value;
+      if (inputPin === PIN_CORRECTO) {
+        isAdmin = true;
+        updateAdminUI();
+        closeModalAdmin();
+        document.getElementById('inputAdminPin').value = '';
+      } else {
+        alert('Clave PIN incorrecta. Intente con: 1234');
+      }
+    }
+
+    function updateAdminUI() {
+      const modeBadge = document.getElementById('modeBadge');
+      const btnAdminText = document.getElementById('btnAdminText');
+      const adminElements = document.querySelectorAll('.admin-only');
+
+      if (isAdmin) {
+        modeBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-amber-500 text-slate-900 flex items-center gap-1';
+        modeBadge.innerHTML = '<i class="fa-solid fa-user-shield"></i> Modo Administrador (Edición Activa)';
+        btnAdminText.innerText = 'Cerrar Admin';
+        adminElements.forEach(el => el.style.display = '');
+      } else {
+        modeBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500 text-white flex items-center gap-1';
+        modeBadge.innerHTML = '<i class="fa-solid fa-eye"></i> Modo Vecino (Solo Lectura)';
+        btnAdminText.innerText = 'Acceso Admin';
+        adminElements.forEach(el => el.style.display = 'none');
+      }
+    }
+
+    function copyPublicLink() {
+      const url = window.location.href.split('?')[0] + '?mode=public';
+      navigator.clipboard.writeText(url);
+      alert('¡Enlace copiado al portapapeles!\n\nComparte esta dirección con los vecinos para que consulten sin clave:\n' + url);
+    }
+
+    // NAVEGACIÓN PESTAÑAS
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('text-indigo-600', 'border-indigo-600');
+        el.classList.add('text-slate-500', 'border-transparent');
+      });
+
+      document.getElementById('content-' + tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('tab-' + tabId);
+      activeBtn.classList.remove('text-slate-500', 'border-transparent');
+      activeBtn.classList.add('text-indigo-600', 'border-indigo-600');
+
+      if (tabId === 'reportes') renderCharts();
+    }
+
+    // RENDERIZADO GENERAL
+    function renderAll() {
+      renderKPIs();
+      renderPagosTable();
+      renderConceptos();
+      renderDeudores();
+      renderVecinos();
+      populateConceptosSelects();
+    }
+
+    // KPI METRICAS
+    function renderKPIs() {
+      const mes = parseInt(document.getElementById('selectMes').value);
+      const anio = parseInt(document.getElementById('selectAnio').value);
+
+      const pagosMes = pagos.filter(p => p.mes === mes && p.anio === anio);
+      const recaudado = pagosMes.reduce((acc, p) => acc + (parseFloat(p.montoPagado) || 0), 0);
+      const totalExigible = pagosMes.reduce((acc, p) => acc + (parseFloat(p.montoBase) || 0), 0);
+      const deuda = Math.max(0, totalExigible - recaudado);
+      const porcentaje = totalExigible > 0 ? Math.round((recaudado / totalExigible) * 100) : 0;
+
+      document.getElementById('kpiRecaudado').innerText = '$' + recaudado.toLocaleString('es-AR');
+      document.getElementById('kpiDeuda').innerText = '$' + deuda.toLocaleString('es-AR');
+      document.getElementById('kpiCumplimiento').innerText = porcentaje + '%';
+      document.getElementById('kpiVecinosCount').innerText = vecinos.length;
+    }
+
+    // TABLA DE COBROS & PAGOS
+    function renderPagosTable() {
+      const mes = parseInt(document.getElementById('selectMes').value);
+      const anio = parseInt(document.getElementById('selectAnio').value);
+      const query = document.getElementById('searchPagos').value.toLowerCase();
+      const tbody = document.getElementById('tbodyPagos');
+      tbody.innerHTML = '';
+
+      vecinos.forEach(v => {
+        if (v.nombre.toLowerCase().includes(query) || v.lote.toLowerCase().includes(query)) {
+          // Buscar pago registrado o mostrar estado pendiente
+          conceptos.forEach(c => {
+            let pago = pagos.find(p => p.vecinoId === v.id && p.conceptoId === c.id && p.mes === mes && p.anio === anio);
+            
+            const montoBase = pago ? pago.montoBase : c.monto;
+            const montoPagado = pago ? pago.montoPagado : 0;
+            const estado = pago ? pago.estado : 'Pendiente';
+
+            let badgeClass = 'bg-rose-100 text-rose-700';
+            if (estado === 'Pagado') badgeClass = 'bg-emerald-100 text-emerald-700';
+            if (estado === 'Parcial') badgeClass = 'bg-amber-100 text-amber-700';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="p-3 font-semibold text-slate-700">${v.lote}</td>
+              <td class="p-3">${v.nombre}</td>
+              <td class="p-3 text-xs font-medium text-slate-500">${c.nombre}</td>
+              <td class="p-3 font-medium">$${montoBase.toLocaleString('es-AR')}</td>
+              <td class="p-3 font-semibold text-emerald-600">$${montoPagado.toLocaleString('es-AR')}</td>
+              <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">${estado}</span></td>
+              <td class="p-3 text-center space-x-1">
+                ${isAdmin ? `<button onclick="openModalPago('${v.id}', '${c.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-2.5 py-1 rounded text-xs font-semibold">Cargar/Editar</button>` : ''}
+                ${pago && pago.montoPagado > 0 ? `<button onclick="verRecibo('${pago.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs"><i class="fa-solid fa-receipt"></i> Recibo</button>` : ''}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      });
+    }
+
+    // TIPOS DE EXPENSAS
+    function guardarConcepto(e) {
+      e.preventDefault();
+      if (!isAdmin) return;
+
+      const nombre = document.getElementById('conceptoNombre').value;
+      const monto = parseFloat(document.getElementById('conceptoMonto').value);
+      const desc = document.getElementById('conceptoDesc').value;
+
+      conceptos.push({
+        id: 'c' + Date.now(),
+        nombre,
+        monto,
+        desc
+      });
+
+      saveData();
+      renderAll();
+      document.getElementById('formConcepto').reset();
+      alert('¡Nuevo tipo de expensa guardado correctamente!');
+    }
+
+    function renderConceptos() {
+      const tbody = document.getElementById('tbodyConceptos');
+      tbody.innerHTML = '';
+
+      conceptos.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-slate-700">${c.nombre}</td>
+          <td class="p-3 font-semibold text-emerald-600">$${c.monto.toLocaleString('es-AR')}</td>
+          <td class="p-3 text-xs text-slate-500">${c.desc || '-'}</td>
+          <td class="p-3 text-center admin-only">
+            <button onclick="eliminarConcepto('${c.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function eliminarConcepto(id) {
+      if (!isAdmin) return;
+      if (confirm('¿Desea eliminar este tipo de expensa?')) {
+        conceptos = conceptos.filter(c => c.id !== id);
+        saveData();
+        renderAll();
+      }
+    }
+
+    function populateConceptosSelects() {
+      const selectAjuste = document.getElementById('selectAjusteConcepto');
+      const selectPago = document.getElementById('pagoConceptoId');
+      
+      selectAjuste.innerHTML = '<option value="TODOS">Todos los Conceptos</option>';
+      selectPago.innerHTML = '';
+
+      conceptos.forEach(c => {
+        selectAjuste.innerHTML += `<option value="${c.id}">${c.nombre} ($${c.monto})</option>`;
+        selectPago.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+      });
+    }
+
+    function aplicarAumentoMasivo() {
+      if (!isAdmin) return;
+      const pct = parseFloat(document.getElementById('inputPorcentajeAumento').value);
+      const conceptoId = document.getElementById('selectAjusteConcepto').value;
+
+      if (isNaN(pct) || pct === 0) {
+        alert('Ingrese un porcentaje válido');
+        return;
+      }
+
+      if (confirm(`¿Aplicar un aumento del ${pct}% a los conceptos seleccionados?`)) {
+        conceptos.forEach(c => {
+          if (conceptoId === 'TODOS' || c.id === conceptoId) {
+            c.monto = Math.round(c.monto * (1 + pct / 100));
+          }
+        });
+
+        saveData();
+        renderAll();
+        document.getElementById('inputPorcentajeAumento').value = '';
+        alert('Importes actualizados con éxito.');
+      }
+    }
+
+    // MODAL REGISTRO PAGO
+    function openModalPago(vecinoId, conceptoId) {
+      const v = vecinos.find(x => x.id === vecinoId);
+      const c = conceptos.find(x => x.id === conceptoId);
+      const mes = parseInt(document.getElementById('selectMes').value);
+      const anio = parseInt(document.getElementById('selectAnio').value);
+
+      document.getElementById('pagoVecinoId').value = vecinoId;
+      document.getElementById('pagoVecinoNombre').value = `${v.lote} - ${v.nombre}`;
+      document.getElementById('pagoConceptoId').value = conceptoId;
+
+      let pago = pagos.find(p => p.vecinoId === vecinoId && p.conceptoId === conceptoId && p.mes === mes && p.anio === anio);
+
+      document.getElementById('pagoMontoBase').value = pago ? pago.montoBase : c.monto;
+      document.getElementById('pagoMontoPagado').value = pago ? pago.montoPagado : c.monto;
+      document.getElementById('pagoEstado').value = pago ? pago.estado : 'Pagado';
+      document.getElementById('pagoMedio').value = pago ? pago.medio : 'Transferencia';
+      document.getElementById('pagoFecha').value = pago ? pago.fecha : new Date().toISOString().split('T')[0];
+      document.getElementById('pagoNotas').value = pago ? pago.notas : '';
+
+      document.getElementById('modalPago').classList.remove('hidden');
+    }
+
+    function closeModalPago() {
+      document.getElementById('modalPago').classList.add('hidden');
+    }
+
+    function guardarPago(e) {
+      e.preventDefault();
+      if (!isAdmin) return;
+
+      const vecinoId = document.getElementById('pagoVecinoId').value;
+      const conceptoId = document.getElementById('pagoConceptoId').value;
+      const mes = parseInt(document.getElementById('selectMes').value);
+      const anio = parseInt(document.getElementById('selectAnio').value);
+
+      const montoBase = parseFloat(document.getElementById('pagoMontoBase').value);
+      const montoPagado = parseFloat(document.getElementById('pagoMontoPagado').value);
+      const estado = document.getElementById('pagoEstado').value;
+      const medio = document.getElementById('pagoMedio').value;
+      const fecha = document.getElementById('pagoFecha').value;
+      const notas = document.getElementById('pagoNotas').value;
+
+      // Eliminar registro previo si existe
+      pagos = pagos.filter(p => !(p.vecinoId === vecinoId && p.conceptoId === conceptoId && p.mes === mes && p.anio === anio));
+
+      pagos.push({
+        id: 'p' + Date.now(),
+        vecinoId,
+        conceptoId,
+        mes,
+        anio,
+        montoBase,
+        montoPagado,
+        estado,
+        medio,
+        fecha,
+        notas
+      });
+
+      saveData();
+      renderAll();
+      closeModalPago();
+    }
+
+    // VECINOS DEUDORES
+    function renderDeudores() {
+      const mes = parseInt(document.getElementById('selectMes').value);
+      const anio = parseInt(document.getElementById('selectAnio').value);
+      const tbody = document.getElementById('tbodyDeudores');
+      tbody.innerHTML = '';
+      let sumaDeudaTotal = 0;
+
+      vecinos.forEach(v => {
+        let deudaVecino = 0;
+        let conceptosPendientes = [];
+
+        conceptos.forEach(c => {
+          let pago = pagos.find(p => p.vecinoId === v.id && p.conceptoId === c.id && p.mes === mes && p.anio === anio);
+          let base = pago ? pago.montoBase : c.monto;
+          let pagado = pago ? pago.montoPagado : 0;
+          let diff = base - pagado;
+
+          if (diff > 0) {
+            deudaVecino += diff;
+            conceptosPendientes.push(`${c.nombre} ($${diff.toLocaleString('es-AR')})`);
+          }
+        });
+
+        if (deudaVecino > 0) {
+          sumaDeudaTotal += deudaVecino;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-3 font-semibold text-slate-700">${v.lote}</td>
+            <td class="p-3 font-medium">${v.nombre}</td>
+            <td class="p-3 text-xs text-slate-500">${v.telefono || '-'}</td>
+            <td class="p-3 text-xs text-rose-600 font-medium">${conceptosPendientes.join(', ')}</td>
+            <td class="p-3 text-right font-bold text-rose-600">$${deudaVecino.toLocaleString('es-AR')}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      });
+
+      document.getElementById('deudaTotalSum').innerText = '$' + sumaDeudaTotal.toLocaleString('es-AR');
+    }
+
+    // PADRÓN DE VECINOS
+    function guardarVecino(e) {
+      e.preventDefault();
+      if (!isAdmin) return;
+
+      const id = document.getElementById('vecinoId').value;
+      const lote = document.getElementById('vecinoLote').value;
+      const nombre = document.getElementById('vecinoNombre').value;
+      const telefono = document.getElementById('vecinoTelefono').value;
+      const email = document.getElementById('vecinoEmail').value;
+
+      if (id) {
+        let v = vecinos.find(x => x.id === id);
+        v.lote = lote;
+        v.nombre = nombre;
+        v.telefono = telefono;
+        v.email = email;
+      } else {
+        vecinos.push({
+          id: 'v' + Date.now(),
+          lote,
+          nombre,
+          telefono,
+          email
+        });
+      }
+
+      saveData();
+      renderAll();
+      resetFormVecino();
+    }
+
+    function renderVecinos() {
+      const tbody = document.getElementById('tbodyVecinos');
+      tbody.innerHTML = '';
+
+      vecinos.forEach(v => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-slate-700">${v.lote}</td>
+          <td class="p-3 font-medium">${v.nombre}</td>
+          <td class="p-3 text-xs text-slate-500">${v.telefono || '-'}</td>
+          <td class="p-3 text-center space-x-2 admin-only">
+            <button onclick="editarVecino('${v.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="eliminarVecino('${v.id}')" class="text-rose-600 hover:text-rose-800 text-xs"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function editarVecino(id) {
+      if (!isAdmin) return;
+      const v = vecinos.find(x => x.id === id);
+      document.getElementById('vecinoId').value = v.id;
+      document.getElementById('vecinoLote').value = v.lote;
+      document.getElementById('vecinoNombre').value = v.nombre;
+      document.getElementById('vecinoTelefono').value = v.telefono || '';
+      document.getElementById('vecinoEmail').value = v.email || '';
+      document.getElementById('formVecinoTitle').innerText = 'Editar Vecino';
+    }
+
+    function resetFormVecino() {
+      document.getElementById('formVecino').reset();
+      document.getElementById('vecinoId').value = '';
+      document.getElementById('formVecinoTitle').innerText = 'Registrar Nuevo Vecino';
+    }
+
+    function eliminarVecino(id) {
+      if (!isAdmin) return;
+      if (confirm('¿Desea eliminar este vecino?')) {
+        vecinos = vecinos.filter(v => v.id !== id);
+        saveData();
+        renderAll();
+      }
+    }
+
+    // RECIBO DE PAGO
+    function verRecibo(pagoId) {
+      const pago = pagos.find(p => p.id === pagoId);
+      const vecino = vecinos.find(v => v.id === pago.vecinoId);
+      const concepto = conceptos.find(c => c.id === pago.conceptoId);
+
+      const body = document.getElementById('reciboBody');
+      body.innerHTML = `
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-slate-500">Comprobante Nº:</span>
+          <span class="font-mono font-bold">REC-${pago.id.slice(-6)}</span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-slate-500">Fecha de Pago:</span>
+          <span class="font-medium">${pago.fecha || 'N/A'}</span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-slate-500">Vecino / Unidad:</span>
+          <span class="font-bold text-slate-800">${vecino.lote} - ${vecino.nombre}</span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-slate-500">Concepto:</span>
+          <span class="font-medium">${concepto.nombre}</span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-slate-500">Medio de Pago:</span>
+          <span class="font-medium">${pago.medio}</span>
+        </div>
+        <div class="flex justify-between pt-2 text-base">
+          <span class="font-bold text-slate-700">Monto Abonado:</span>
+          <span class="font-bold text-emerald-600">$${pago.montoPagado.toLocaleString('es-AR')}</span>
+        </div>
+      `;
+
+      document.getElementById('modalRecibo').classList.remove('hidden');
+    }
+
+    function closeModalRecibo() {
+      document.getElementById('modalRecibo').classList.add('hidden');
+    }
+
+    // GRÁFICOS CON CHART.JS
+    let myPieChart = null;
+    let myBarChart = null;
+
+    function renderCharts() {
+      const mes = parseInt(document.getElementById('selectMes').value);
+      const anio = parseInt(document.getElementById('selectAnio').value);
+
+      const pagosMes = pagos.filter(p => p.mes === mes && p.anio === anio);
+      const recaudado = pagosMes.reduce((acc, p) => acc + (parseFloat(p.montoPagado) || 0), 0);
+      const totalExigible = pagosMes.reduce((acc, p) => acc + (parseFloat(p.montoBase) || 0), 0);
+      const deuda = Math.max(0, totalExigible - recaudado);
+
+      // Pie Chart
+      const ctxPie = document.getElementById('chartPie').getContext('2d');
+      if (myPieChart) myPieChart.destroy();
+      myPieChart = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+          labels: ['Recaudado', 'Deuda Pendiente'],
+          datasets: [{
+            data: [recaudado, deuda],
+            backgroundColor: ['#10b981', '#f43f5e']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // Bar Chart Anual
+      const ctxBar = document.getElementById('chartBar').getContext('2d');
+      const dataAnual = Array(12).fill(0);
+      pagos.filter(p => p.anio === anio).forEach(p => {
+        dataAnual[p.mes - 1] += parseFloat(p.montoPagado) || 0;
+      });
+
+      if (myBarChart) myBarChart.destroy();
+      myBarChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+          datasets: [{
+            label: 'Recaudación ($)',
+            data: dataAnual,
+            backgroundColor: '#6366f1'
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+  </script>
+</body>
+</html>
