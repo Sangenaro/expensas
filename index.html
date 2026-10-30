@@ -168,14 +168,14 @@
             <h2 class="text-lg font-bold text-slate-800">Estado de Cobro de Expensas</h2>
             <p class="text-xs text-slate-500">Listado general de vecinos y registro de pagos para el período seleccionado.</p>
           </div>
-          <input type="text" id="searchPagos" oninput="renderPagosTable()" placeholder="Buscar por vecino o lote..." class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <input type="text" id="searchPagos" oninput="renderPagosTable()" placeholder="Buscar por vecino o Mza/Lote..." class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead class="bg-slate-100 text-slate-600 uppercase text-xs">
               <tr>
-                <th class="p-3">Lote / Dpto</th>
+                <th class="p-3">Manzana / Lote</th>
                 <th class="p-3">Vecino</th>
                 <th class="p-3">Tipo Expensa</th>
                 <th class="p-3">Monto Base</th>
@@ -290,7 +290,7 @@
           <table class="w-full text-left text-sm">
             <thead class="bg-rose-50 text-rose-800 uppercase text-xs">
               <tr>
-                <th class="p-3">Lote / Dpto</th>
+                <th class="p-3">Manzana / Lote</th>
                 <th class="p-3">Vecino</th>
                 <th class="p-3">Contacto</th>
                 <th class="p-3">Conceptos Pendientes</th>
@@ -317,8 +317,8 @@
             <input type="hidden" id="vecinoId">
             
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Nº Lote / Depto *</label>
-              <input type="text" id="vecinoLote" placeholder="Ej: Lote 12 / Dpto 3B" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Manzana / Lote *</label>
+              <input type="text" id="vecinoLote" placeholder="Ej: Mza 4 / Lote 12" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
 
             <div>
@@ -355,7 +355,7 @@
             <table class="w-full text-left text-sm">
               <thead class="bg-slate-100 text-slate-600 uppercase text-xs">
                 <tr>
-                  <th class="p-3">Lote / Dpto</th>
+                  <th class="p-3">Manzana / Lote</th>
                   <th class="p-3">Nombre</th>
                   <th class="p-3">Teléfono</th>
                   <th class="p-3 text-center admin-only">Acciones</th>
@@ -431,7 +431,7 @@
 
   <!-- MODAL: REGISTRAR / EDITAR PAGO -->
   <div id="modalPago" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-100 pb-3">
         <h3 class="text-lg font-bold text-slate-800">Registrar / Editar Pago</h3>
         <button onclick="closeModalPago()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -441,8 +441,40 @@
         <input type="hidden" id="pagoVecinoId">
         
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Vecino / Lote</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Vecino / Manzana - Lote</label>
           <input type="text" id="pagoVecinoNombre" readonly class="w-full text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 font-medium">
+        </div>
+
+        <!-- Selección del período al que corresponde el pago (soporta meses atrasados) -->
+        <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg space-y-2">
+          <label class="block text-xs font-bold text-indigo-900">Período al que Corresponde el Pago:</label>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">Mes que abona</label>
+              <select id="pagoCorrespondeMes" class="w-full text-sm bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">Año que abona</label>
+              <select id="pagoCorrespondeAnio" class="w-full text-sm bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -483,13 +515,13 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Pago</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Registro del Cobro</label>
           <input type="date" id="pagoFecha" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Observaciones</label>
-          <input type="text" id="pagoNotas" placeholder="Ej: Comprobante Nº 12345" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <input type="text" id="pagoNotas" placeholder="Ej: Pago cuota atrasada / Comprobante N° 123" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
         <div class="flex gap-2 pt-2">
@@ -531,6 +563,8 @@
   <script>
     // ESTADO DE LA APLICACIÓN
     let isAdmin = false;
+
+    const NOMBRES_MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
     // CONFIGURACIÓN INICIAL DE ADMINISTRACIÓN
     let configAdmin = JSON.parse(localStorage.getItem('san_genaro_config')) || {
@@ -790,14 +824,18 @@
     function openModalPago(vecinoId, conceptoId) {
       const v = vecinos.find(x => x.id === vecinoId);
       const c = conceptos.find(x => x.id === conceptoId);
-      const mes = parseInt(document.getElementById('selectMes').value);
-      const anio = parseInt(document.getElementById('selectAnio').value);
+      const mesConsulta = parseInt(document.getElementById('selectMes').value);
+      const anioConsulta = parseInt(document.getElementById('selectAnio').value);
 
       document.getElementById('pagoVecinoId').value = vecinoId;
       document.getElementById('pagoVecinoNombre').value = `${v.lote} - ${v.nombre}`;
       document.getElementById('pagoConceptoId').value = conceptoId;
 
-      let pago = pagos.find(p => p.vecinoId === vecinoId && p.conceptoId === conceptoId && p.mes === mes && p.anio === anio);
+      // Por defecto el mes/año abonado coincide con la consulta activa
+      document.getElementById('pagoCorrespondeMes').value = mesConsulta;
+      document.getElementById('pagoCorrespondeAnio').value = anioConsulta;
+
+      let pago = pagos.find(p => p.vecinoId === vecinoId && p.conceptoId === conceptoId && p.mes === mesConsulta && p.anio === anioConsulta);
 
       document.getElementById('pagoMontoBase').value = pago ? pago.montoBase : c.monto;
       document.getElementById('pagoMontoPagado').value = pago ? pago.montoPagado : c.monto;
@@ -819,8 +857,10 @@
 
       const vecinoId = document.getElementById('pagoVecinoId').value;
       const conceptoId = document.getElementById('pagoConceptoId').value;
-      const mes = parseInt(document.getElementById('selectMes').value);
-      const anio = parseInt(document.getElementById('selectAnio').value);
+      
+      // Se utiliza el período seleccionado específicamente en el formulario de cobro (mes que abona)
+      const mes = parseInt(document.getElementById('pagoCorrespondeMes').value);
+      const anio = parseInt(document.getElementById('pagoCorrespondeAnio').value);
 
       const montoBase = parseFloat(document.getElementById('pagoMontoBase').value);
       const montoPagado = parseFloat(document.getElementById('pagoMontoPagado').value);
@@ -829,6 +869,7 @@
       const fecha = document.getElementById('pagoFecha').value;
       const notas = document.getElementById('pagoNotas').value;
 
+      // Reemplazar registro para ese vecino, concepto y período
       pagos = pagos.filter(p => !(p.vecinoId === vecinoId && p.conceptoId === conceptoId && p.mes === mes && p.anio === anio));
 
       pagos.push({
@@ -848,6 +889,7 @@
       saveData();
       renderAll();
       closeModalPago();
+      alert(`Pago guardado correctamente para el período ${NOMBRES_MESES[mes]} ${anio}.`);
     }
 
     // VECINOS DEUDORES
@@ -1014,15 +1056,19 @@
       const body = document.getElementById('reciboBody');
       body.innerHTML = `
         <div class="flex justify-between border-b pb-2">
-          <span class="text-slate-500">Comprobante Nº:</span>
+          <span class="text-slate-500">Comprobante N°:</span>
           <span class="font-mono font-bold">REC-${pago.id.slice(-6)}</span>
         </div>
         <div class="flex justify-between border-b pb-2">
-          <span class="text-slate-500">Fecha de Pago:</span>
+          <span class="text-slate-500">Período Abonado:</span>
+          <span class="font-bold text-indigo-700">${NOMBRES_MESES[pago.mes]} ${pago.anio}</span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-slate-500">Fecha de Cobro:</span>
           <span class="font-medium">${pago.fecha || 'N/A'}</span>
         </div>
         <div class="flex justify-between border-b pb-2">
-          <span class="text-slate-500">Vecino / Unidad:</span>
+          <span class="text-slate-500">Vecino / Manzana - Lote:</span>
           <span class="font-bold text-slate-800">${vecino.lote} - ${vecino.nombre}</span>
         </div>
         <div class="flex justify-between border-b pb-2">
@@ -1033,6 +1079,7 @@
           <span class="text-slate-500">Medio de Pago:</span>
           <span class="font-medium">${pago.medio}</span>
         </div>
+        ${pago.notas ? `<div class="flex justify-between border-b pb-2"><span class="text-slate-500">Observaciones:</span><span class="font-medium">${pago.notas}</span></div>` : ''}
         <div class="flex justify-between pt-2 text-base">
           <span class="font-bold text-slate-700">Monto Abonado:</span>
           <span class="font-bold text-emerald-600">$${pago.montoPagado.toLocaleString('es-AR')}</span>
